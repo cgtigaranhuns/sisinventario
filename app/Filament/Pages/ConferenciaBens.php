@@ -17,6 +17,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Marcelorodrigo\FilamentBarcodeScannerField\Forms\Components\BarcodeInput;
 
 /**
  * Opções de situação do bem — ajuste livremente para o vocabulário
@@ -49,6 +50,33 @@ class ConferenciaBens extends Page implements HasForms, HasTable
     {
         return $table
             ->query(Bem::query())
+            ->headerActions([
+                Action::make('escanear')
+                    ->label('Escanear código de barras')
+                    ->icon('heroicon-o-qr-code')
+                    ->color('gray')
+                    ->form([
+                        BarcodeInput::make('rp')
+                            ->label('RP do bem')
+                            ->placeholder('Aponte a câmera para o código do bem...')
+                            ->required()
+                            ->rules(['exists:bens,rp'])
+                            ->validationMessages([
+                                'exists' => 'Não encontrei nenhum bem com esse RP.',
+                            ]),
+                    ])
+                    ->action(function (array $data) {
+                        // Filtra a tabela pelo RP lido — o conferente cai
+                        // direto na linha do item, sem precisar digitar nada.
+                        $this->tableSearch = (string) $data['rp'];
+                        $this->resetPage();
+ 
+                        Notification::make()
+                            ->title("RP {$data['rp']} localizado")
+                            ->success()
+                            ->send();
+                    }),
+            ])
             // Clicar na linha NÃO abre outra página — tudo é editado
             // ali mesmo, sem sair da lista.
             ->recordUrl(null)
