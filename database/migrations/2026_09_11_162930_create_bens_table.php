@@ -11,23 +11,18 @@ return new class extends Migration
         Schema::create('bens', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('rp')->unique()->comment('Número de patrimônio (RP)');
-            $table->string('local')->nullable();
-            $table->string('situacao')->nullable();
             $table->text('descricao');
-            $table->string('observacao')->nullable();
-
-            // Controle da conferência
-            $table->timestamp('conferido_em')->nullable();
-            $table->foreignId('conferido_por_id')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-
+            $table->foreignId('local_id')->nullable()->constrained('locais');
+            $table->string('ultima_situacao')->nullable();
+            $table->string('elemento_despesa')->nullable();
+            $table->decimal('valor', 10, 2)->nullable();
+            $table->text('observacao')->nullable();
             $table->timestamps();
-
-            $table->index('situacao');
-            $table->index('local');
+            // Índices para otimização de consultas
             $table->index('rp');
+            $table->index('local_id');
+            $table->index('ultima_situacao');
+            $table->index('elemento_despesa');
         });
     }
 

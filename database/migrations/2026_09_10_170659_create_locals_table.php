@@ -14,6 +14,9 @@ return new class extends Migration
         Schema::create('locais', function (Blueprint $table) {
             $table->id();
             $table->string('nome')->unique();
+            $table->string('descricao')->nullable();
+            $table->string('responsavel')->nullable();
+            $table->string('uorg')->nullable();
             $table->timestamps();
         });
     }

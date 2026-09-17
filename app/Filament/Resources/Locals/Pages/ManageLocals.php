@@ -9,7 +9,7 @@ use Filament\Resources\Pages\ManageRecords;
 class ManageLocals extends ManageRecords
 {
     protected static string $resource = LocalResource::class;
-    protected static ?string $title = 'Gerenciar Locais';
+    protected static ?string $title = 'Locais';
 
     protected function getHeaderActions(): array
     {
@@ -17,8 +17,8 @@ class ManageLocals extends ManageRecords
             CreateAction::make()
                 ->label('Novo Local')
                 ->modalHeading('Criar Novo Local')
-                ->icon('heroicon-o-plus')
-                ->modalButton('Criar Local'),
+                ->icon('heroicon-o-plus'),
+                
         ];
     }
 }

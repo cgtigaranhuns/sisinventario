@@ -10,10 +10,18 @@ class Local extends Model
 
     protected $fillable = [
         'nome',
+        'descricao',
+        'responsavel',
+        'uorg',
     ];
 
     public function conferencias()
     {
-        return $this->hasMany(Bem::class, 'local', 'nome');
+        return $this->hasMany(Bem::class, 'local_id', 'id');
+    }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
     }
 }

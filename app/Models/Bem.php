@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Bem extends Model
 {
@@ -13,10 +12,13 @@ class Bem extends Model
 
     protected $fillable = [
         'rp',
-        'local',
-        'situacao',
         'descricao',
+        'local_id',
+        'ultima_situacao',
+        'elemento_despesa',
+        'valor',
         'observacao',
+        'situacao',
         'conferido_em',
         'conferido_por_id',
     ];
@@ -25,36 +27,13 @@ class Bem extends Model
         'conferido_em' => 'datetime',
     ];
 
-    public function conferidoPor(): BelongsTo
+    public function local(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'conferido_por_id');
+        return $this->belongsTo(Local::class, 'local_id');
     }
 
-    public function scopePendentes(Builder $query): Builder
+    public function conferencias(): HasMany
     {
-        return $query->whereNull('conferido_em');
-    }
-
-    public function scopeConferidos(Builder $query): Builder
-    {
-        return $query->whereNotNull('conferido_em');
-    }
-
-    public function scopePorLocal(Builder $query, string $local): Builder
-    {
-        return $query->where('local', $local);
-    }
-
-    protected static function booted(): void
-    {
-        // Sempre que o usuário alterar a situação ou o local pela tela de
-        // conferência, o item é automaticamente marcado como "conferido",
-        // sem exigir um clique extra — é isso que dá agilidade ao processo.
-        static::updating(function (Bem $bem) {
-            if ($bem->isDirty(['situacao', 'local']) && ! $bem->isDirty('conferido_em')) {
-                $bem->conferido_em = now();
-                $bem->conferido_por_id = Auth::id();
-            }
-        });
+        return $this->hasMany(Conferencia::class, 'rp_id');
     }
 }
