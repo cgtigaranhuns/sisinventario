@@ -45,7 +45,7 @@ class InventarioPolicy
      */
     public function delete(User $user, Inventario $inventario): bool
     {
-        return $user->hasPermissionTo('Excluir Inventario');
+        return $user->hasPermissionTo('Deletar Inventario');
     }
 
     /**

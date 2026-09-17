@@ -45,7 +45,7 @@ class LocalPolicy
      */
     public function delete(User $user, Local $local): bool
     {
-        return $user->hasPermissionTo('Excluir Local');
+        return $user->hasPermissionTo('Deletar Local');
     }
 
     /**
