@@ -33,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->darkMode(false)
             ->login(Login::class)
             ->colors([
-               // 'primary' => Color::Amber,
+                // 'primary' => Color::Amber,
                 'primary' => '#3CB371',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -59,6 +59,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->resources([
+                config('filament-logger.activity_resource'),
             ]);
     }
 }

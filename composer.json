@@ -13,6 +13,7 @@
         "laravel/tinker": "^3.0",
         "maatwebsite/excel": "^4.0",
         "marcelorodrigo/filament-barcode-scanner-field": "^1.1",
+        "mradder/filament-logger": "^1.6",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
