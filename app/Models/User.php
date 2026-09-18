@@ -11,6 +11,7 @@ use LdapRecord\Laravel\Auth\AuthenticatesWithLdap;
 use LdapRecord\Laravel\Auth\LdapAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
+
 class User extends Authenticatable implements LdapAuthenticatable
 {
     use AuthenticatesWithLdap, HasFactory, Notifiable, HasRoles;

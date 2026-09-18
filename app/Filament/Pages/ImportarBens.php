@@ -2,7 +2,8 @@
 
 namespace App\Filament\Pages;
 
-use App\Imports\BensImport;
+use App\Jobs\ProcessarImportacaoBens;
+use App\Models\User;
 use BackedEnum;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -12,10 +13,6 @@ use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Maatwebsite\Excel\Facades\Excel;
-use Throwable;
 
 class ImportarBens extends Page implements HasForms
 {
@@ -74,52 +71,18 @@ class ImportarBens extends Page implements HasForms
     public function importar(): void
     {
         $data = $this->form->getState();
+        
 
         $caminhoRelativo = $data['planilha'];
-        $caminhoAbsoluto = Storage::disk('local')->path($caminhoRelativo);
 
-        try {
-            $import = new BensImport;
+        ProcessarImportacaoBens::dispatch($caminhoRelativo, Auth::id());
 
-            // Se BensImport implementar ShouldQueue, force execução síncrona aqui
-            // para que $import->criados/atualizados/ignorados venham preenchidos
-            // e a notificação abaixo reflita o resultado real:
-            // Excel::import($import, $caminhoAbsoluto, null, \Maatwebsite\Excel\Excel::XLSX);
-            Excel::import($import, $caminhoAbsoluto);
+        Notification::make()
+            ->title('Importação iniciada')
+            ->body('A planilha está sendo processada em segundo plano. Você será avisado por aqui quando terminar.')
+            ->info()
+            ->send();
 
-            Storage::disk('local')->delete($caminhoRelativo);
-
-            Notification::make()
-                ->title('Importação concluída')
-                ->body("{$import->criados} bem(ns) criado(s), {$import->atualizados} atualizado(s), {$import->ignorados} linha(s) sem RP ignorada(s).")
-                ->success()
-                ->send();
-
-            if ($import->failures()->isNotEmpty()) {
-                $linhas = $import->failures()
-                    ->map(fn ($falha) => "linha {$falha->row()}")
-                    ->implode(', ');
-
-                Notification::make()
-                    ->title('Algumas linhas não passaram na validação')
-                    ->body("Confira: {$linhas}.")
-                    ->warning()
-                    ->persistent()
-                    ->send();
-            }
-        } catch (Throwable $e) {
-            Log::error('Falha ao importar planilha de bens: '.$e->getMessage(), [
-                'exception' => $e,
-            ]);
-
-            Notification::make()
-                ->title('Falha na importação')
-                ->body('Ocorreu um erro ao processar a planilha: '.$e->getMessage())
-                ->danger()
-                ->persistent()
-                ->send();
-        } finally {
-            $this->form->fill();
-        }
+        $this->form->fill();
     }
 }

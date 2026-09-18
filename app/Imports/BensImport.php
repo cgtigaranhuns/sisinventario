@@ -5,13 +5,16 @@ namespace App\Imports;
 use App\Models\Bem;
 use App\Models\Local;
 use Illuminate\Database\Eloquent\Model;
-use Maatwebsite\Excel\Concerns\SkipsFailures;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithBatchInserts;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Concerns\WithStartRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Validators\Failure;
+use Filament\Notifications\Notification;
 
 /**
  * Importa a planilha de bens para a tabela `bens`.
@@ -25,22 +28,30 @@ use Maatwebsite\Excel\Concerns\WithValidation;
  *   E) Elemento de Despesa (opcional)
  *   F) Valor              (opcional — aceita "1234,56" ou "1234.56")
  *   G) Observação         (opcional)
+ *
+ * A importação é processada pelo job de aplicação, sem enfileirar a
+ * própria classe do importador. Os contadores de progresso ficam no Cache,
+ * porque o processamento pode ser feito em chunks.
  */
 class BensImport implements SkipsOnFailure, ToModel, WithBatchInserts, WithChunkReading, WithStartRow, WithValidation
 {
-    use SkipsFailures;
-
-    public int $criados = 0;
-
-    public int $atualizados = 0;
-
-    public int $ignorados = 0;
+    public function __construct(protected string $importId)
+    {
+        Log::info('Iniciando importação de bens', [
+            'import_id' => $this->importId,
+        ]);
+    }
 
     /**
      * A primeira linha é o cabeçalho da planilha — os dados começam na linha 2.
      */
     public function startRow(): int
     {
+        Log::debug('Linha inicial da importação de bens configurada', [
+            'import_id' => $this->importId,
+            'start_row' => 2,
+        ]);
+
         return 2;
     }
 
@@ -51,7 +62,11 @@ class BensImport implements SkipsOnFailure, ToModel, WithBatchInserts, WithChunk
         $rp = trim((string) $rp);
 
         if ($rp === '') {
-            $this->ignorados++;
+            Log::warning('Linha ignorada na importação de bens por RP vazio', [
+                'import_id' => $this->importId,
+                'row' => $row,
+            ]);
+            $this->registrarProgresso('ignorados');
 
             return null;
         }
@@ -60,6 +75,12 @@ class BensImport implements SkipsOnFailure, ToModel, WithBatchInserts, WithChunk
 
         if (filled($nomeLocal)) {
             $local = Local::firstOrCreate(['nome' => trim((string) $nomeLocal)]);
+            Log::debug('Local validado/criado durante importação de bens', [
+                'import_id' => $this->importId,
+                'rp' => $rp,
+                'local' => trim((string) $nomeLocal),
+                'local_id' => $local?->id,
+            ]);
         }
 
         $bem = Bem::updateOrCreate(
@@ -74,17 +95,98 @@ class BensImport implements SkipsOnFailure, ToModel, WithBatchInserts, WithChunk
             ]
         );
 
-        $bem->wasRecentlyCreated ? $this->criados++ : $this->atualizados++;
+        $acao = $bem->wasRecentlyCreated ? 'criados' : 'atualizados';
+        Log::info('Item processado na importação de bens', [
+            'import_id' => $this->importId,
+            'rp' => $rp,
+            'acao' => $acao,
+            'descricao' => trim((string) $descricao),
+            'local' => $nomeLocal,
+        ]);
+
+        $this->registrarProgresso($acao);
 
         // Já salvamos manualmente com updateOrCreate (para não duplicar
         // pelo RP); retornar null diz ao Laravel Excel para não tentar
         // salvar de novo por conta própria.
+       
         return null;
+    }
+
+    /**
+     * Chamado pelo Laravel Excel quando uma linha falha na validação
+     * (regras de rules()). Guarda no cache em vez de numa propriedade,
+     * porque esse job pode ser um chunk diferente do que processa
+     * o restante da planilha.
+     */
+    public function onFailure(Failure ...$failures): void
+    {
+        $chaveFalhas = "importacao_bens:{$this->importId}:falhas";
+        $lock = Cache::lock("{$chaveFalhas}:lock", 10);
+
+        $lock->block(5, function () use ($chaveFalhas, $failures) {
+            $atual = Cache::get($chaveFalhas, []);
+
+            foreach ($failures as $falha) {
+                $atual[] = [
+                    'linha' => $falha->row(),
+                    'erros' => $falha->errors(),
+                ];
+            }
+
+            Cache::put($chaveFalhas, $atual, now()->addHours(2));
+        });
+
+        Cache::increment("importacao_bens:{$this->importId}:processadas", count($failures));
+
+        Log::warning('Falhas de validação na importação de bens', [
+            'import_id' => $this->importId,
+            'quantidade' => count($failures),
+            'falhas' => array_map(fn (Failure $falha) => [
+                'linha' => $falha->row(),
+                'erros' => $falha->errors(),
+            ], $failures),
+        ]);
+    }
+
+    private function registrarProgresso(string $campo): void
+    {
+        Cache::increment("importacao_bens:{$this->importId}:processadas");
+        Cache::increment("importacao_bens:{$this->importId}:{$campo}");
+
+        Log::debug('Progresso atualizado na importação de bens', [
+            'import_id' => $this->importId,
+            'campo' => $campo,
+            'processadas' => Cache::get("importacao_bens:{$this->importId}:processadas", 0),
+        ]);
+    }
+
+    public function getResumo(): array
+    {
+        $falhas = Cache::get("importacao_bens:{$this->importId}:falhas", []);
+        $criados = (int) Cache::get("importacao_bens:{$this->importId}:criados", 0);
+        $atualizados = (int) Cache::get("importacao_bens:{$this->importId}:atualizados", 0);
+        $ignorados = (int) Cache::get("importacao_bens:{$this->importId}:ignorados", 0);
+        $processadas = (int) Cache::get("importacao_bens:{$this->importId}:processadas", 0);
+
+        return [
+            'criados' => $criados,
+            'atualizados' => $atualizados,
+            'ignorados' => $ignorados,
+            'processadas' => $processadas,
+            'importados' => $criados + $atualizados,
+            'falhas' => is_array($falhas) ? $falhas : [],
+        ];
     }
 
     private function parseValor(mixed $valor): ?float
     {
         if (blank($valor)) {
+            Log::debug('Valor vazio ignorado durante importação de bens', [
+                'import_id' => $this->importId,
+                'valor' => $valor,
+            ]);
+
             return null;
         }
 
@@ -92,7 +194,17 @@ class BensImport implements SkipsOnFailure, ToModel, WithBatchInserts, WithChunk
         $limpo = str_replace('.', '', $limpo);
         $limpo = str_replace(',', '.', $limpo);
 
-        return is_numeric($limpo) ? (float) $limpo : null;
+        if (! is_numeric($limpo)) {
+            Log::warning('Valor inválido encontrado na importação de bens', [
+                'import_id' => $this->importId,
+                'valor_original' => $valor,
+                'valor_limpo' => $limpo,
+            ]);
+
+            return null;
+        }
+
+        return (float) $limpo;
     }
 
     public function rules(): array
