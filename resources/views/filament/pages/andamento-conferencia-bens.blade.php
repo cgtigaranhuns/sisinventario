@@ -259,11 +259,7 @@
                 const palette = {
                     'Servível': '#15803D',
                     'Inservível': '#f97316',
-                    'Ocioso': '#2A78D6',
-                    'Recuperável': '#EDA100',
-                    'Antieconômico': '#a855f7',
-                    'Irrecuperável': '#ef4444',
-                    'Não localizado': '#6b7280',
+                    
                 };
 
                 new Chart(situacaoChart, {

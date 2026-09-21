@@ -55,7 +55,7 @@ class UserResource extends Resource
                     ->preload()
                     ->required(),
                 Select::make('roles')
-                    ->label('Perfil')                    
+                    ->label('Perfil')
                     ->preload()
                     ->relationship('roles', 'name'),
             ]);
@@ -83,8 +83,8 @@ class UserResource extends Resource
                         $ids = is_array($state) ? $state : [$state];
 
                         return collect($ids)
-                            ->filter(fn($id) => filled($id))
-                            ->map(fn($id) => Local::find($id)?->nome ?? $id)
+                            ->filter(fn ($id) => filled($id))
+                            ->map(fn ($id) => Local::find($id)?->nome ?? $id)
                             ->implode(', ');
                     })
                     ->sortable()
@@ -101,7 +101,7 @@ class UserResource extends Resource
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    //  DeleteBulkAction::make(),
                 ]),
             ]);
     }

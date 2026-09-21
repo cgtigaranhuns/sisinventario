@@ -39,12 +39,7 @@ class BensInventarioRelationManager extends RelationManager
                     ->label('Situação')
                     ->options([
                         'Servível' => 'Servível',
-                        'Inservível' => 'Inservível',
-                        'Ocioso' => 'Ocioso',
-                        'Recuperável' => 'Recuperável',
-                        'Antieconômico' => 'Antieconômico',
-                        'Irrecuperável' => 'Irrecuperável',
-                        'Não localizado' => 'Não localizado',
+                        'Inservível' => 'Inservível',                       
                     ]),
                 Textarea::make('observacao')
                     ->label('Observação'),
@@ -87,6 +82,56 @@ class BensInventarioRelationManager extends RelationManager
                             ->send();
                     }),
 
+                Action::make('addBemAvulso')
+                        ->label('Adicionar bem avulso')
+                        ->icon('heroicon-o-plus-circle')
+                        ->form([
+                            Select::make('rp_id')
+                                ->label('Bem')
+                                ->relationship('bem', 'rp')
+                                ->getOptionLabelFromRecordUsing(fn (Bem $record): string => "{$record->rp} - {$record->descricao}")
+                                ->searchable(['rp', 'descricao'])
+                                ->preload()
+                                ->required(),
+                        ])
+                        ->action(function (array $data): void {
+                            $inventario = $this->getOwnerRecord();
+
+                            if ($inventario->conferencias()
+                                ->where('rp_id', $data['rp_id'])
+                                ->exists()) {
+                                Notification::make()
+                                    ->title('Bem já adicionado')
+                                    ->body('Este bem já foi adicionado a este inventário.')
+                                    ->warning()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $bem = Bem::find($data['rp_id']);
+
+                            if (! $bem) {
+                                Notification::make()
+                                    ->title('Bem não encontrado')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            $inventario->conferencias()->create([
+                                'rp_id' => $bem->id,
+                                'local_id' => $bem->local_id,
+                            ]);
+
+                            Notification::make()
+                                ->title('Bem adicionado com sucesso')
+                                ->success()
+                                ->send();
+                        })
+                    
+
             ])
             ->columns([
                 TextColumn::make('bem.rp')
@@ -95,7 +140,8 @@ class BensInventarioRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('bem.descricao')
                     ->label('Descrição')
-                    ->limit(40)
+                    ->limit(30)
+                    ->tooltip(fn ($record) => $record->descricao)
                     ->searchable(),
                 TextColumn::make('local.nome')
                     ->label('Local')
@@ -111,12 +157,16 @@ class BensInventarioRelationManager extends RelationManager
                     ->label('Conferido em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-                TextColumn::make('conferido_por_id')
+                TextColumn::make('conferidoPor.name')
+                    ->limit(15)
+                    ->tooltip(fn ($record) => $record->conferidoPor?->name)
                     ->label('Conferido por'),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->label(''),
+                DeleteAction::make()
+                    ->label(''),
             ]);
     }
 }

@@ -13,9 +13,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Table;
 
 class PermissionResource extends Resource
@@ -23,10 +21,10 @@ class PermissionResource extends Resource
     protected static ?string $model = Permission::class;
 
     protected static ?string $label = 'Permissões';
+
     protected static ?string $navigationLabel = 'Permissões';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Segurança';
-
-
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-s-shield-exclamation';
 
@@ -55,12 +53,14 @@ class PermissionResource extends Resource
                 //
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->label(''),
+                DeleteAction::make()
+                    ->label(''),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    //   DeleteBulkAction::make(),
                 ]),
             ]);
     }

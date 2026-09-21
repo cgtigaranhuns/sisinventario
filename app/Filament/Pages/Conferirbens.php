@@ -101,12 +101,7 @@ class ConferirBens extends Page implements HasForms, HasTable
 
     protected const SITUACOES = [
         'Servível' => 'Servível',
-        'Inservível' => 'Inservível',
-        'Ocioso' => 'Ocioso',
-        'Recuperável' => 'Recuperável',
-        'Antieconômico' => 'Antieconômico',
-        'Irrecuperável' => 'Irrecuperável',
-        'Não localizado' => 'Não localizado',
+        'Inservível' => 'Inservível',       
     ];
 
     /**
@@ -322,6 +317,26 @@ class ConferirBens extends Page implements HasForms, HasTable
                             ? $query->whereIn('id', $rpIdsConferidos)
                             : $query->whereNotIn('id', $rpIdsConferidos);
                     }),
+                SelectFilter::make('localBens')
+                    ->label('Local dos bens')
+                    ->options(fn () => Local::query()
+                        ->orderBy('nome')
+                        ->pluck('nome', 'id')
+                        ->toArray())
+                    ->query(function ($query, array $data) {
+                        $inventarioId = $this->inventarioSelecionadoId();
+                        $localId = $data['value'] ?? null;
+
+                        if (! $inventarioId || blank($localId)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('conferencias', function ($conferenciaQuery) use ($inventarioId, $localId) {
+                            $conferenciaQuery
+                                ->where('inventario_id', $inventarioId)
+                                ->where('local_id', $localId);
+                        });
+                    }),
             ])
             ->recordActions([
                 Action::make('marcarConferido')
@@ -366,6 +381,104 @@ class ConferirBens extends Page implements HasForms, HasTable
                                 'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
                             ]);
                         }
+                        Notification::make()
+                            ->title('Itens selecionados confirmados')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
+                // Alterar situação em lote
+                BulkAction::make('alterarSituacaoSelecionados')
+                    ->label('Alterar situação dos selecionados')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
+                    ->form([
+                        Select::make('situacao')
+                            ->label('Nova situação')
+                            ->options(self::SITUACOES)
+                            ->required(),
+                    ])
+                    ->action(function ($records, array $data) {
+                        $inventarioId = $this->inventarioSelecionadoId();
+
+                        if (! $inventarioId) {
+                            return;
+                        }
+
+                        foreach ($records as $record) {
+                            $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
+
+                            $this->salvarConferencia($record, $inventarioId, [
+                                'local_id' => $conferenciaAtual->local_id ?? $record->local_id,
+                                'situacao' => $data['situacao'],
+                            ]);
+                        }
+                        Notification::make()
+                            ->title('Situação atualizada para os itens selecionados')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+                // Alterar local em lote
+                BulkAction::make('alterarLocalSelecionados')
+                    ->label('Alterar local dos selecionados')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
+                    ->form([
+                        Select::make('local_id')
+                            ->label('Novo local')
+                            ->options(fn () => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->required(),
+                    ])
+                    ->action(function ($records, array $data) {
+                        $inventarioId = $this->inventarioSelecionadoId();
+
+                        if (! $inventarioId) {
+                            return;
+                        }
+
+                        foreach ($records as $record) {
+                            $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
+
+                            $this->salvarConferencia($record, $inventarioId, [
+                                'local_id' => $data['local_id'],
+                                'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
+                            ]);
+                        }
+                        Notification::make()
+                            ->title('Local atualizado para os itens selecionados')
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+                // Marcar como pendente em lote
+                BulkAction::make('marcarPendenteSelecionados')
+                    ->label('Marcar como pendente')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->action(function ($records) {
+                        $inventarioId = $this->inventarioSelecionadoId();
+                        if (! $inventarioId) {
+                            return;
+                        }
+                        foreach ($records as $record) {
+                            $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
+                            $this->salvarConferencia(
+                                $record,
+                                $inventarioId,
+                                [
+                                    'local_id' => $conferenciaAtual->local_id ?? $record->local_id,
+                                    'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
+                                ],
+                                false,
+                            );
+                        }
+                        Notification::make()
+                            ->title('Itens marcados como pendentes')
+                            ->success()
+                            ->send();
                     })
                     ->deselectRecordsAfterCompletion(),
             ])
@@ -389,7 +502,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                         // direto na linha do item, sem precisar digitar nada.
                         $this->tableSearch = (string) $data['rp'];
                         $this->resetPage();
- 
+
                         Notification::make()
                             ->title("RP {$data['rp']} localizado")
                             ->success()

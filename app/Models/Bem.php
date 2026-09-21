@@ -36,4 +36,9 @@ class Bem extends Model
     {
         return $this->hasMany(Conferencia::class, 'rp_id');
     }
+
+    public function conferidoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'conferido_por_id');
+    }
 }

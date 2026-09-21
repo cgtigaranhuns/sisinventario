@@ -24,4 +24,9 @@ class Local extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function bems()
+    {
+        return $this->hasMany(Bem::class, 'local_id', 'id');
+    }
 }

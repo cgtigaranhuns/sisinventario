@@ -16,7 +16,7 @@ class ManageRoles extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->label('Criar Perfil')
+                ->label('Novo Perfil')
                 ->icon('heroicon-s-plus')
                 ->modalHeading('Criar Perfil'),
         ];

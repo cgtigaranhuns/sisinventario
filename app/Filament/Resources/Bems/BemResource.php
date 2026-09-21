@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Bems;
 
+use App\Filament\Exports\BemExporter;
 use App\Filament\Resources\Bems\Pages\ManageBems;
 use App\Models\Bem;
 use BackedEnum;
@@ -9,6 +10,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -72,6 +74,11 @@ class BemResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(BemExporter::class)
+                    ->label('Exportar Bens'),
+            ])
             ->columns([
                 TextColumn::make('rp')
                     ->label('RP')
@@ -80,6 +87,8 @@ class BemResource extends Resource
                 TextColumn::make('descricao')
                     ->label('Descrição')
                     ->sortable()
+                    ->limit(30)
+                    ->tooltip(fn ($record) => $record->descricao)
                     ->searchable(),
                 TextColumn::make('local.nome')
                     ->label('Local')
@@ -105,13 +114,25 @@ class BemResource extends Resource
                     ->summarize(Sum::make()->label('Total')->money('BRL', true))
                     ->sortable()
                     ->searchable(),
+                TextColumn::make('conferidoPor.name')
+                    ->label('Conferido Por')
+                    ->sortable()
+                    ->limit(15)
+                    ->tooltip(fn ($record) => $record->conferidoPor?->name)
+                    ->searchable(),
+                TextColumn::make('conferido_em')
+                    ->label('Conferido Em')
+                    ->date('d/m/Y H:i')
+                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make(),
+                EditAction::make()
+                    ->label(''),
+                DeleteAction::make()
+                    ->label(''),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

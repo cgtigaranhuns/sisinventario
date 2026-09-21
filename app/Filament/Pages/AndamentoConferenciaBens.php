@@ -213,12 +213,7 @@ class AndamentoConferenciaBens extends Page implements HasForms
     {
         return match ($situacao) {
             'Servível' => '#22c55e',
-            'Inservível' => '#f97316',
-            'Ocioso' => '#3b82f6',
-            'Recuperável' => '#facc15',
-            'Antieconômico' => '#a855f7',
-            'Irrecuperável' => '#ef4444',
-            'Não localizado' => '#64748b',
+            'Inservível' => '#f97316',            
             default => '#10b981',
         };
     }

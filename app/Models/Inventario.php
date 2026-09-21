@@ -22,15 +22,6 @@ class Inventario extends Model
         'comissao' => 'array',
     ];
 
-    protected static function booted(): void
-    {
-        static::updated(function (self $inventario): void {
-            if ($inventario->wasChanged('status') && $inventario->status === 'Concluído') {
-                $inventario->sincronizarBensConferidos();
-            }
-        });
-    }
-
     public function conferencias()
     {
         return $this->hasMany(Conferencia::class, 'inventario_id');
@@ -40,13 +31,15 @@ class Inventario extends Model
     {
         $this->conferencias()
             ->whereNotNull('conferido_em')
-            ->get(['rp_id', 'local_id', 'situacao'])
+            ->get(['rp_id', 'local_id', 'situacao', 'conferido_em', 'conferido_por_id'])
             ->each(function (Conferencia $conferencia): void {
                 Bem::query()
                     ->whereKey($conferencia->rp_id)
                     ->update([
                         'local_id' => $conferencia->local_id,
                         'ultima_situacao' => $conferencia->situacao,
+                        'conferido_em' => $conferencia->conferido_em,
+                        'conferido_por_id' => $conferencia->conferido_por_id,
                     ]);
             });
     }

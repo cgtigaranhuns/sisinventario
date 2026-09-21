@@ -11,10 +11,9 @@ use LdapRecord\Laravel\Auth\AuthenticatesWithLdap;
 use LdapRecord\Laravel\Auth\LdapAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
-
 class User extends Authenticatable implements LdapAuthenticatable
 {
-    use AuthenticatesWithLdap, HasFactory, Notifiable, HasRoles;
+    use AuthenticatesWithLdap, HasFactory, HasRoles, Notifiable;
 
     /** @use HasFactory<UserFactory> */
     protected $fillable = [
@@ -44,5 +43,15 @@ class User extends Authenticatable implements LdapAuthenticatable
     public function local()
     {
         return $this->belongsTo(Local::class, 'local_id');
+    }
+
+    public function bemEncontrados()
+    {
+        return $this->hasMany(BemEncontrado::class, 'encontrado_por_id');
+    }
+
+    public function bens()
+    {
+        return $this->hasMany(Bem::class, 'conferido_por_id');
     }
 }
