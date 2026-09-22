@@ -134,18 +134,30 @@ class ConferirBens extends Page implements HasForms, HasTable
             return null;
         }
 
-        return $bem->conferencias->firstWhere('inventario_id', $inventarioId);
+        // Busca direto no banco (em vez de depender de $bem->conferencias já
+        // carregada) para funcionar igual em qualquer contexto: linha da
+        // tabela, bulk actions ou escaneamento — onde o registro pode não
+        // vir com a relação eager loaded e filtrada pelo inventário atual.
+        return Conferencia::query()
+            ->where('inventario_id', $inventarioId)
+            ->where('rp_id', $bem->id)
+            ->first();
     }
 
     protected function salvarConferencia(Bem $bem, int $inventarioId, array $dados, bool $marcarComoConferido = true): Conferencia
     {
-        return Conferencia::updateOrCreate(
-            ['inventario_id' => $inventarioId, 'rp_id' => $bem->id],
-            array_merge($dados, [
-                'conferido_em' => $marcarComoConferido ? now() : null,
-                'conferido_por_id' => $marcarComoConferido ? Auth::id() : null,
-            ])
-        );
+        $conferencia = Conferencia::firstOrNew([
+            'inventario_id' => $inventarioId,
+            'rp_id' => $bem->id,
+        ]);
+
+        $conferencia->forceFill(array_merge($dados, [
+            'conferido_em' => $marcarComoConferido ? now() : null,
+            'conferido_por_id' => $marcarComoConferido ? Auth::id() : null,
+        ]));
+        $conferencia->save();
+
+        return $conferencia;
     }
 
     public function table(Table $table): Table
@@ -235,7 +247,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                 SelectColumn::make('conferencia_situacao')
                     ->label('Situação')
                     ->options(self::SITUACOES)
-                    ->selectablePlaceholder(false)
+                   // ->selectablePlaceholder(false)
                     ->getStateUsing(function (Bem $record) {
                         $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
 

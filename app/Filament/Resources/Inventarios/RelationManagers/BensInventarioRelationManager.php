@@ -4,7 +4,9 @@ namespace App\Filament\Resources\Inventarios\RelationManagers;
 
 use App\Models\Bem;
 use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -66,12 +68,15 @@ class BensInventarioRelationManager extends RelationManager
                         $bens = Bem::query()
                             ->whereNotIn('id', $idsJaAdicionados)
                            // ->whereNotNull('local_id')
-                            ->get(['id', 'local_id']);
+                            ->get(['id', 'local_id', 'ultima_situacao']);
 
-                        $bens->each(fn (Bem $bem) => $inventario->conferencias()->create([
-                            'rp_id' => $bem->id,
-                            'local_id' => $bem->local_id,
-                        ]));
+                        $bens->each(function (Bem $bem) use ($inventario): void {
+                            $inventario->conferencias()->create([
+                                'rp_id' => $bem->id,
+                                'local_id' => $bem->local_id,
+                                'situacao' => $bem->ultima_situacao,
+                            ]);
+                        });
 
                         Notification::make()
                             ->title("{$bens->count()} bem(ns) adicionado(s)")
@@ -123,6 +128,7 @@ class BensInventarioRelationManager extends RelationManager
                             $inventario->conferencias()->create([
                                 'rp_id' => $bem->id,
                                 'local_id' => $bem->local_id,
+                                'situacao' => $bem->ultima_situacao,
                             ]);
 
                             Notification::make()
@@ -167,6 +173,11 @@ class BensInventarioRelationManager extends RelationManager
                     ->label(''),
                 DeleteAction::make()
                     ->label(''),
+            ])
+             ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
             ]);
     }
 }
