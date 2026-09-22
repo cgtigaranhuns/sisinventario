@@ -95,6 +95,22 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->required()
                     ->helperText('Os bens serão carregados conforme o inventário selecionado.')
                     ->native(false),
+                BarcodeInput::make('rp')
+                    ->label('Buscar por código de barras')
+                    ->placeholder('Clique para escanear o código do bem...')
+                    ->rules(['exists:bens,rp'])
+                    ->validationMessages([
+                        'exists' => 'Não encontrei nenhum bem com esse RP.',
+                    ])
+                    ->live()
+                    ->afterStateUpdated(function (?string $state): void {
+                        if (blank($state)) {
+                            return;
+                        }
+
+                        $this->tableSearch = $state;
+                        $this->resetPage();
+                    }),
             ])
             ->statePath('data');
     }
@@ -493,33 +509,6 @@ class ConferirBens extends Page implements HasForms, HasTable
                             ->send();
                     })
                     ->deselectRecordsAfterCompletion(),
-            ])
-            ->headerActions([
-                Action::make('escanear')
-                    ->label('Escanear código de barras')
-                    ->icon('heroicon-o-qr-code')
-                    ->color('gray')
-                    ->form([
-                        BarcodeInput::make('rp')
-                            ->label('RP do bem')
-                            ->placeholder('Aponte a câmera para o código do bem...')
-                            ->required()
-                            ->rules(['exists:bens,rp'])
-                            ->validationMessages([
-                                'exists' => 'Não encontrei nenhum bem com esse RP.',
-                            ]),
-                    ])
-                    ->action(function (array $data) {
-                        // Filtra a tabela pelo RP lido — o conferente cai
-                        // direto na linha do item, sem precisar digitar nada.
-                        $this->tableSearch = (string) $data['rp'];
-                        $this->resetPage();
-
-                        Notification::make()
-                            ->title("RP {$data['rp']} localizado")
-                            ->success()
-                            ->send();
-                    }),
             ])
             ->defaultSort('rp')
             ->paginated([25, 50, 100, 'all'])
