@@ -95,7 +95,7 @@
             </x-filament::section>
 
             {{-- Gráficos --}}
-            <div class="mt-6 grid gap-4 xl:grid-cols-3">
+            <div class="mt-6 grid gap-4 xl:grid-cols-2">
                 <x-filament::section>
                     <x-slot name="heading">Resumo geral</x-slot>
                     <x-slot name="headerEnd">
@@ -129,21 +129,6 @@
                         <div class="acb-empty">
                             <x-filament::icon icon="heroicon-o-clipboard-document-list" class="h-8 w-8" />
                             Ainda não há itens conferidos para este inventário.
-                        </div>
-                    @endif
-                </x-filament::section>
-
-                <x-filament::section>
-                    <x-slot name="heading">Progresso por local</x-slot>
-
-                    @if(! empty($locais))
-                        <div style="height:230px;">
-                            <canvas id="localConferenciaChart" aria-label="Progresso por local" role="img"></canvas>
-                        </div>
-                    @else
-                        <div class="acb-empty">
-                            <x-filament::icon icon="heroicon-o-map-pin" class="h-8 w-8" />
-                            Nenhum item foi registrado para este inventário.
                         </div>
                     @endif
                 </x-filament::section>
@@ -217,11 +202,9 @@
         document.addEventListener('DOMContentLoaded', function () {
             const geralChart = document.getElementById('conferenciaGeralChart');
             const situacaoChart = document.getElementById('situacaoConferenciaChart');
-            const localChart = document.getElementById('localConferenciaChart');
 
             const resumo = @json($resumo ?? []);
             const situacoes = @json($situacoes ?? []);
-            const locais = @json($locais ?? []);
 
             Chart.defaults.font.family = "'Inter var', ui-sans-serif, system-ui, sans-serif";
             Chart.defaults.color = '#8A93A0';
@@ -286,49 +269,6 @@
                                 grid: { color: 'rgba(138,147,160,0.15)' },
                             },
                             y: { grid: { display: false } },
-                        },
-                    },
-                });
-            }
-
-            if (localChart && locais.length) {
-                new Chart(localChart, {
-                    type: 'bar',
-                    data: {
-                        labels: locais.map(item => item.nome),
-                        datasets: [{
-                            label: 'Percentual concluído',
-                            data: locais.map(item => Number(item.percentual)),
-                            backgroundColor: '#15803D',
-                            borderRadius: 5,
-                            maxBarThickness: 16,
-                        }],
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        return `${context.formattedValue}%`;
-                                    },
-                                },
-                            },
-                        },
-                        scales: {
-                            x: {
-                                min: 0,
-                                max: 100,
-                                grid: { color: 'rgba(138,147,160,0.15)' },
-                                ticks: { callback: value => value + '%' },
-                            },
-                            y: {
-                                grid: { display: false },
-                                ticks: { autoSkip: false, font: { size: 10 } },
-                            },
                         },
                     },
                 });
