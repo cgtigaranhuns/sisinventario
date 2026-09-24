@@ -41,7 +41,8 @@ class BensInventarioRelationManager extends RelationManager
                     ->label('Situação')
                     ->options([
                         'Servível' => 'Servível',
-                        'Inservível' => 'Inservível',                       
+                        'Inservível' => 'Inservível',
+                        'Não Localizado' => 'Não Localizado',                       
                     ]),
                 Textarea::make('observacao')
                     ->label('Observação'),
@@ -155,10 +156,13 @@ class BensInventarioRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('situacao')
                     ->label('Situação')
-                    ->badge(),
-                TextColumn::make('observacao')
-                    ->label('Observação')
-                    ->limit(40),
+                    ->color(fn (string $state): string => match ($state) {
+                        'Servível' => 'success',
+                        'Inservível' => 'warning',
+                        'Não Localizado' => 'danger',
+                        default => 'secondary',
+                    })
+                    ->badge(),                
                 TextColumn::make('conferido_em')
                     ->label('Conferido em')
                     ->dateTime('d/m/Y H:i')

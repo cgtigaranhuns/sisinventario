@@ -22,6 +22,8 @@ class BemExporter extends Exporter
             ExportColumn::make('local.nome')
                 ->label('Local')
                 ->state(fn (Bem $record): ?string => $record->local?->nome),
+            ExportColumn::make('local.uorg')
+                ->label('UORG'),
             ExportColumn::make('ultima_situacao'),
             ExportColumn::make('elemento_despesa'),
             ExportColumn::make('valor')

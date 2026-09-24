@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Bems;
 use App\Filament\Exports\BemExporter;
 use App\Filament\Resources\Bems\Pages\ManageBems;
 use App\Models\Bem;
+use App\Models\Local;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -19,6 +20,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class BemResource extends Resource
@@ -56,6 +58,8 @@ class BemResource extends Resource
                     ->options([
                         'Servível' => 'Servível',
                         'Inservível' => 'Inservível',
+                        'Não Localizado' => 'Não Localizado',
+                        
                     ]),
                 TextInput::make('elemento_despesa')
                     ->label('Elemento de Despesa')
@@ -99,7 +103,8 @@ class BemResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'Servível' => 'success',
-                        'Inservível' => 'danger',
+                        'Inservível' => 'warning',
+                        'Não Localizado' => 'danger',
                         default => 'secondary',
                     })
                     ->sortable()
@@ -126,7 +131,9 @@ class BemResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-                //
+               SelectFilter::make('user')
+                    ->relationship('local', 'nome')
+                    ->label('Local'),
             ])
             ->recordActions([
                 EditAction::make()

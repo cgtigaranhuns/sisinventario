@@ -9,6 +9,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -46,6 +47,15 @@ class LocalResource extends Resource
                 TextInput::make('uorg')
                     ->label('UORG')
                     ->maxLength(255),
+                TextInput::make('setor')
+                    ->label('Setor'),
+                Select::make('bloco')
+                    ->options([
+                        'Bloco B' => 'Blobo B',
+                        'Bloco C' => 'Bloco C',
+                        'Bloco D' => 'Blobo D',
+                        'Bloco E' => 'Bloco E',
+                    ])
             ]);
     }
 
@@ -58,12 +68,12 @@ class LocalResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
-                TextColumn::make('descricao')
-                    ->label('Descrição')
+                TextColumn::make('setor')
+                    ->label('Setor')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('responsavel')
-                    ->label('Responsável')
+                TextColumn::make('bloco')
+                    ->label('Bloco')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('uorg')

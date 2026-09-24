@@ -13,6 +13,8 @@ class Local extends Model
         'descricao',
         'responsavel',
         'uorg',
+        'setor',
+        'bloco',
     ];
 
     public function conferencias()

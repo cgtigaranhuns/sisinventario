@@ -13,8 +13,7 @@ class Conferencia extends Model
         'inventario_id',
         'rp_id',
         'local_id',
-        'situacao',
-        'observacao',
+        'situacao',        
         'conferido_em',
         'conferido_por_id',
     ];

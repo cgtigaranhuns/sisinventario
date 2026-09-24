@@ -242,6 +242,7 @@
                 const palette = {
                     'Servível': '#15803D',
                     'Inservível': '#f97316',
+                    'Não Localizado': '#F22E07'
                     
                 };
 

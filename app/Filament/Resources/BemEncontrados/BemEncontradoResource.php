@@ -48,6 +48,8 @@ class BemEncontradoResource extends Resource
                     ->options([
                         'Servível' => 'Servível',
                         'Inservível' => 'Inservível',
+                        'Não Localizado' => 'Não Localizado',
+                        
                     ]),
                 Hidden::make('encontrado_por_id')
                     ->default(auth()->user()->id),
@@ -91,6 +93,7 @@ class BemEncontradoResource extends Resource
                     ->icon(fn ($state): string => match ($state) {
                         'Servível' => 'heroicon-o-check-circle',
                         'Inservível' => 'heroicon-o-x-circle',
+                        'Não Localizado' => 'heroicon-o-x-circle',
                     }),
                 TextColumn::make('status')
                     ->label('Status')

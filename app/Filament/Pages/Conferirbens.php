@@ -77,6 +77,45 @@ class ConferirBens extends Page implements HasForms, HasTable
         $this->resetTable();
     }
 
+    /**
+     * Recebe o texto reconhecido pela Web Speech API (chamado direto pelo
+     * Alpine da view, via $wire.buscarPorRpFalado), extrai os dígitos (o
+     * número do RP) e reaproveita o mesmo fluxo de busca usado pelo campo
+     * BarcodeInput: define tableSearch e reseta a paginação.
+     */
+    public function buscarPorRpFalado(string $textoFalado): void
+    {
+        $rp = preg_replace('/\D+/', '', $textoFalado);
+
+        if (blank($rp)) {
+            Notification::make()
+                ->title('Não consegui identificar um número no que foi falado')
+                ->body("Entendi: \"{$textoFalado}\"")
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (! Bem::query()->where('rp', $rp)->exists()) {
+            Notification::make()
+                ->title("Não encontrei nenhum bem com o RP {$rp}")
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->data['rp'] = $rp;
+        $this->tableSearch = $rp;
+        $this->resetPage();
+
+        Notification::make()
+            ->title("Buscando RP {$rp}")
+            ->success()
+            ->send();
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -117,7 +156,8 @@ class ConferirBens extends Page implements HasForms, HasTable
 
     protected const SITUACOES = [
         'Servível' => 'Servível',
-        'Inservível' => 'Inservível',       
+        'Inservível' => 'Inservível',
+        'Não Localizado' => 'Não Localizado',       
     ];
 
     /**
@@ -174,6 +214,18 @@ class ConferirBens extends Page implements HasForms, HasTable
         $conferencia->save();
 
         return $conferencia;
+    }
+
+    protected function podeConfirmarConferencia(Bem $bem, ?int $inventarioId): bool
+    {
+        if (! $inventarioId) {
+            return false;
+        }
+
+        $conferencia = $this->conferenciaDoRegistro($bem, $inventarioId);
+
+        return filled($conferencia?->local_id ?? $bem->local_id)
+            && filled($conferencia?->situacao ?? $bem->situacao);
     }
 
     public function table(Table $table): Table
@@ -372,9 +424,21 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->visible(fn (Bem $record) => $this->inventarioSelecionadoId()
-                        && blank($this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_em))
+                        && blank($this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_em)
+                        && $this->podeConfirmarConferencia($record, $this->inventarioSelecionadoId()))
                     ->action(function (Bem $record) {
                         $inventarioId = $this->inventarioSelecionadoId();
+
+                        if (! $this->podeConfirmarConferencia($record, $inventarioId)) {
+                            Notification::make()
+                                ->title('Não foi possível confirmar')
+                                ->body('Preencha o local e a situação antes de confirmar o bem.')
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
 
                         $this->salvarConferencia($record, $inventarioId, [
@@ -401,7 +465,14 @@ class ConferirBens extends Page implements HasForms, HasTable
                             return;
                         }
 
+                        $temItemInvalido = false;
+
                         foreach ($records as $record) {
+                            if (! $this->podeConfirmarConferencia($record, $inventarioId)) {
+                                $temItemInvalido = true;
+                                continue;
+                            }
+
                             $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
 
                             $this->salvarConferencia($record, $inventarioId, [
@@ -409,8 +480,10 @@ class ConferirBens extends Page implements HasForms, HasTable
                                 'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
                             ]);
                         }
+
                         Notification::make()
-                            ->title('Itens selecionados confirmados')
+                            ->title($temItemInvalido ? 'Alguns itens não puderam ser confirmados' : 'Itens selecionados confirmados')
+                            ->body($temItemInvalido ? 'Preencha o local e a situação de cada item antes de confirmar.' : null)
                             ->success()
                             ->send();
                     })
