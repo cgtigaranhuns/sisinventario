@@ -7,6 +7,7 @@ use App\Models\Conferencia;
 use App\Models\Inventario;
 use App\Models\Local;
 use BackedEnum;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
@@ -54,6 +55,12 @@ class ConferirBens extends Page implements HasForms, HasTable
     protected string $view = 'filament.pages.conferir-bens';
 
     /**
+     * Quantidade de dígitos do RP (o código de barras pode trazer mais
+     * dígitos; só os últimos são usados na busca).
+     */
+    protected const RP_DIGITOS = 6;
+
+    /**
      * Estado do formulário de seleção do inventário.
      *
      * @var array<string, mixed>
@@ -78,14 +85,28 @@ class ConferirBens extends Page implements HasForms, HasTable
     }
 
     /**
+     * Normaliza o texto lido/falado para o formato do RP: mantém apenas
+     * os dígitos e devolve os 6 últimos. Se houver menos de 6 dígitos,
+     * devolve o que tiver (zeros à esquerda são preservados, pois o
+     * valor é sempre tratado como string).
+     */
+    protected function normalizarRp(?string $valor): string
+    {
+        $digitos = preg_replace('/\D+/', '', (string) $valor);
+
+        return substr($digitos, -self::RP_DIGITOS);
+    }
+
+    /**
      * Recebe o texto reconhecido pela Web Speech API (chamado direto pelo
      * Alpine da view, via $wire.buscarPorRpFalado), extrai os dígitos (o
-     * número do RP) e reaproveita o mesmo fluxo de busca usado pelo campo
-     * BarcodeInput: define tableSearch e reseta a paginação.
+     * número do RP, considerando só os 6 últimos) e reaproveita o mesmo
+     * fluxo de busca usado pelo campo BarcodeInput: define tableSearch e
+     * reseta a paginação.
      */
     public function buscarPorRpFalado(string $textoFalado): void
     {
-        $rp = preg_replace('/\D+/', '', $textoFalado);
+        $rp = $this->normalizarRp($textoFalado);
 
         if (blank($rp)) {
             Notification::make()
@@ -137,17 +158,37 @@ class ConferirBens extends Page implements HasForms, HasTable
                 BarcodeInput::make('rp')
                     ->label('Buscar por código de barras')
                     ->placeholder('Clique para escanear o código do bem...')
-                    ->rules(['exists:bens,rp'])
-                    ->validationMessages([
-                        'exists' => 'Não encontrei nenhum bem com esse RP.',
+                    // A regra normaliza o valor por conta própria (6 últimos
+                    // dígitos), então funciona independentemente de a
+                    // validação rodar antes ou depois do afterStateUpdated.
+                    ->rules([
+                        fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                            $rp = $this->normalizarRp((string) $value);
+
+                            if (blank($rp) || ! Bem::query()->where('rp', $rp)->exists()) {
+                                $fail('Não encontrei nenhum bem com esse RP.');
+                            }
+                        },
                     ])
                     ->live()
-                    ->afterStateUpdated(function (?string $state): void {
+                    ->afterStateUpdated(function (?string $state, callable $set): void {
                         if (blank($state)) {
                             return;
                         }
 
-                        $this->tableSearch = $state;
+                        $rp = $this->normalizarRp($state);
+
+                        if (blank($rp)) {
+                            return;
+                        }
+
+                        // Só reescreve o campo se o valor mudou (evita
+                        // disparar o hook em cascata).
+                        if ($rp !== $state) {
+                            $set('rp', $rp);
+                        }
+
+                        $this->tableSearch = $rp;
                         $this->resetPage();
                     }),
             ])
@@ -157,7 +198,7 @@ class ConferirBens extends Page implements HasForms, HasTable
     protected const SITUACOES = [
         'Servível' => 'Servível',
         'Inservível' => 'Inservível',
-        'Não Localizado' => 'Não Localizado',       
+        'Não Localizado' => 'Não Localizado',
     ];
 
     /**
