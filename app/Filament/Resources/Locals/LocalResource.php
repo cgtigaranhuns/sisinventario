@@ -51,10 +51,10 @@ class LocalResource extends Resource
                     ->label('Setor'),
                 Select::make('bloco')
                     ->options([
-                        'Bloco B' => 'Blobo B',
-                        'Bloco C' => 'Bloco C',
-                        'Bloco D' => 'Blobo D',
-                        'Bloco E' => 'Bloco E',
+                        'BLOCO B' => 'BLOCO B',
+                        'BLOCO C' => 'BLOCO C',
+                        'BLOCO D' => 'BLOCO D',
+                        'BLOCO E' => 'BLOCO E',
                     ])
             ]);
     }
