@@ -55,6 +55,8 @@ class LocalResource extends Resource
                         'BLOCO C' => 'BLOCO C',
                         'BLOCO D' => 'BLOCO D',
                         'BLOCO E' => 'BLOCO E',
+                        'BIBLIOTECA' => 'BIBLIOTECA',
+                        'EXTERNO' => 'EXTERNO',
                     ])
             ]);
     }
