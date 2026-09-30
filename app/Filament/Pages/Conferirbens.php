@@ -143,7 +143,7 @@ class ConferirBens extends Page implements HasForms, HasTable
             ->components([
                 Select::make('inventarioId')
                     ->label('Inventário em conferência')
-                    ->options(fn () => Inventario::query()
+                    ->options(fn() => Inventario::query()
                         ->where('status', 'Em andamento')
                         ->orderBy('titulo')
                         ->pluck('titulo', 'id')
@@ -162,7 +162,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                     // dígitos), então funciona independentemente de a
                     // validação rodar antes ou depois do afterStateUpdated.
                     ->rules([
-                        fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
+                        fn(): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                             $rp = $this->normalizarRp((string) $value);
 
                             if (blank($rp) || ! Bem::query()->where('rp', $rp)->exists()) {
@@ -210,7 +210,7 @@ class ConferirBens extends Page implements HasForms, HasTable
     {
         return array_values(array_filter(
             Arr::flatten(Auth::user()->local_id ?? []),
-            fn ($id) => filled($id),
+            fn($id) => filled($id),
         ));
     }
 
@@ -284,7 +284,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                 });
 
                 if ($inventarioId) {
-                    $query->with(['conferencias' => fn ($q) => $q->where('inventario_id', $inventarioId)]);
+                    $query->with(['conferencias' => fn($q) => $q->where('inventario_id', $inventarioId)]);
                 } else {
                     // Sem inventário selecionado ainda: não mostra nenhum bem,
                     // só a mensagem pedindo para escolher um.
@@ -316,11 +316,12 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->searchable()
                     ->wrap()
                     ->limit(60)
-                    ->tooltip(fn ($record) => $record->descricao),
+                    ->tooltip(fn($record) => $record->descricao),
 
                 SelectColumn::make('conferencia_local_id')
                     ->label('Local')
-                    ->options(fn () => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->options(fn() => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                    ->searchableOptions()
                     ->selectablePlaceholder(false)
                     ->getStateUsing(function (Bem $record) {
                         $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
@@ -356,7 +357,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                 SelectColumn::make('conferencia_situacao')
                     ->label('Situação')
                     ->options(self::SITUACOES)
-                   // ->selectablePlaceholder(false)
+                    // ->selectablePlaceholder(false)
                     ->getStateUsing(function (Bem $record) {
                         $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
 
@@ -405,14 +406,14 @@ class ConferirBens extends Page implements HasForms, HasTable
 
                 TextColumn::make('conferido_em')
                     ->label('Conferido em')
-                    ->state(fn (Bem $record) => $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_em)
+                    ->state(fn(Bem $record) => $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_em)
                     ->since()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('conferido_por_id')
                     ->label('Conferido por')
-                    ->state(fn (Bem $record) => $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferidoPor?->name ?? $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_por_id)
-                   // ->searchable()
+                    ->state(fn(Bem $record) => $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferidoPor?->name ?? $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_por_id)
+                    // ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -440,7 +441,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                     }),
                 SelectFilter::make('localBens')
                     ->label('Local dos bens')
-                    ->options(fn () => Local::query()
+                    ->options(fn() => Local::query()
                         ->orderBy('nome')
                         ->pluck('nome', 'id')
                         ->toArray())
@@ -464,7 +465,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->label('Confirmar')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn (Bem $record) => $this->inventarioSelecionadoId()
+                    ->visible(fn(Bem $record) => $this->inventarioSelecionadoId()
                         && blank($this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId())?->conferido_em)
                         && $this->podeConfirmarConferencia($record, $this->inventarioSelecionadoId()))
                     ->action(function (Bem $record) {
@@ -570,7 +571,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->form([
                         Select::make('local_id')
                             ->label('Novo local')
-                            ->options(fn () => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                            ->options(fn() => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
                             ->required(),
                     ])
                     ->action(function ($records, array $data) {
