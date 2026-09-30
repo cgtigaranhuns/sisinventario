@@ -14,6 +14,7 @@
         "maatwebsite/excel": "^4.0",
         "marcelorodrigo/filament-barcode-scanner-field": "^1.1",
         "mradder/filament-logger": "^1.6",
+        "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-permission": "^8.3"
     },
     "require-dev": {
