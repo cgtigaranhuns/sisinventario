@@ -7,6 +7,7 @@ use App\Filament\Resources\Bems\Pages\ManageBems;
 use App\Models\Bem;
 use App\Models\Local;
 use BackedEnum;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -22,6 +23,7 @@ use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Notifications\Notification;
 
 class BemResource extends Resource
 {
@@ -65,8 +67,7 @@ class BemResource extends Resource
                     ->label('Elemento de Despesa')
                     ->maxLength(255),
                 TextInput::make('valor')
-                    ->label('Valor')
-                    ->numeric()
+                    ->label('Valor')                    
                     ->maxLength(255),
                 Textarea::make('observacao')
                     ->label('Observação')
@@ -131,8 +132,9 @@ class BemResource extends Resource
                     ->sortable(),
             ])
             ->filters([
-               SelectFilter::make('user')
+               SelectFilter::make('local')
                     ->relationship('local', 'nome')
+                    ->searchable()
                     ->label('Local'),
             ])
             ->recordActions([
@@ -143,6 +145,26 @@ class BemResource extends Resource
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('alterarLocal')
+                        ->label('Alterar local')
+                        ->icon('heroicon-o-map-pin')
+                        ->form([
+                            Select::make('local_id')
+                                ->label('Novo local')
+                                ->options(fn () => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                                ->required(),
+                        ])
+                        ->action(function ($records, array $data): void {
+                            foreach ($records as $record) {
+                                $record->update(['local_id' => $data['local_id']]);
+                            }
+
+                            Notification::make()
+                                ->title('Local atualizado para os bens selecionados')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

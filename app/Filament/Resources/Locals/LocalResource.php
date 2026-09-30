@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class LocalResource extends Resource
@@ -77,6 +78,7 @@ class LocalResource extends Resource
                 TextColumn::make('bloco')
                     ->label('Bloco')
                     ->searchable()
+                    ->sortable()
                     ->sortable(),
                 TextColumn::make('uorg')
                     ->label('UORG')
@@ -85,7 +87,37 @@ class LocalResource extends Resource
 
             ])
             ->filters([
-                //
+                SelectFilter::make('bloco')
+                    ->options([
+                        'BLOCO B' => 'BLOCO B',
+                        'BLOCO C' => 'BLOCO C',
+                        'BLOCO D' => 'BLOCO D',
+                        'BLOCO E' => 'BLOCO E',
+                        'BIBLIOTECA' => 'BIBLIOTECA',
+                        'EXTERNO' => 'EXTERNO',
+                    ])
+                    ->searchable()
+                    ->label('Bloco'),
+                SelectFilter::make('uorg')
+                    ->options(fn () => Local::query()
+                        ->whereNotNull('uorg')
+                        ->where('uorg', '!=', '')
+                        ->distinct()
+                        ->orderBy('uorg')
+                        ->pluck('uorg', 'uorg')
+                        ->toArray())
+                    ->searchable()
+                    ->label('UORG'),
+                SelectFilter::make('setor')
+                    ->options(fn () => Local::query()
+                        ->whereNotNull('setor')
+                        ->where('setor', '!=', '')
+                        ->distinct()
+                        ->orderBy('setor')
+                        ->pluck('setor', 'setor')
+                        ->toArray())
+                    ->searchable()
+                    ->label('Setor'),
             ])
             ->recordActions([
                 EditAction::make()
