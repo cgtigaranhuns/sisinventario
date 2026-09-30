@@ -4,16 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Conferencia extends Model
 {
+    use LogsActivity;
+
     protected $table = 'conferencias';
 
     protected $fillable = [
         'inventario_id',
         'rp_id',
         'local_id',
-        'situacao',        
+        'situacao',
         'conferido_em',
         'conferido_por_id',
     ];
@@ -21,6 +25,20 @@ class Conferencia extends Model
     protected $casts = [
         'conferido_em' => 'datetime',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'inventario_id',
+                'rp_id',
+                'local_id',
+                'situacao',
+                'conferido_em',
+                'conferido_por_id',
+            ])
+            ->logOnlyDirty();
+    }
 
     public function inventario()
     {

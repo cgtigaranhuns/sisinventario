@@ -322,6 +322,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->label('Local')
                     ->options(fn() => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
                     ->searchableOptions()
+                    ->native(false)
                     ->selectablePlaceholder(false)
                     ->getStateUsing(function (Bem $record) {
                         $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
