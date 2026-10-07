@@ -12,14 +12,20 @@ class BemEncontrado extends Model
         'rp',
         'descricao',
         'situacao',
-        'local',
+        'local_id',
         'encontrado_por_id',
         'status',
         'foto',
+        'sem_rp',
     ];
 
     public function encontradoPor()
     {
         return $this->belongsTo(User::class, 'encontrado_por_id');
+    }
+
+    public function local()
+    {
+        return $this->belongsTo(Local::class, 'local_id');
     }
 }

@@ -31,4 +31,9 @@ class Local extends Model
     {
         return $this->hasMany(Bem::class, 'local_id', 'id');
     }
+
+    public function bemsEncontrados()
+    {
+        return $this->hasMany(BemEncontrado::class, 'local_id', 'id');
+    }
 }

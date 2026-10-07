@@ -13,6 +13,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -35,26 +36,33 @@ class BemEncontradoResource extends Resource
     {
         return $schema
             ->components([
+                Toggle::make('sem_rp')
+                    ->label('Sem RP')
+                    ->columnSpanFull()
+                    ->live()
+                    ->default(false),
+                // TODO: Implementar
                 TextInput::make('rp')
+                    ->visible(fn($get) => !$get('sem_rp'))
                     ->label('RP'),
                 TextInput::make('descricao')
                     ->label('Descrição')
                     ->maxLength(255),
-                TextInput::make('local')
+                Select::make('local_id')
                     ->label('Local')
-                    ->maxLength(255),
+                    ->relationship('local', 'nome'),
                 Select::make('situacao')
                     ->label('Situação')
                     ->options([
                         'Servível' => 'Servível',
                         'Inservível' => 'Inservível',
                         'Não Localizado' => 'Não Localizado',
-                        
+
                     ]),
                 Hidden::make('encontrado_por_id')
                     ->default(auth()->user()->id),
                 Select::make('status')
-                    ->visible(fn ($context) => $context === 'edit')
+                    ->visible(fn($context) => $context === 'edit')
                     ->default('Pendente')
                     ->options([
                         'Pendente' => 'Pendente',
@@ -62,7 +70,12 @@ class BemEncontradoResource extends Resource
                     ]),
                 FileUpload::make('foto')
                     ->label('Foto')
-                    ->image(),
+                    ->image()
+                    ->extraInputAttributes(['capture' => 'environment'])
+                    ->automaticallyResizeImagesMode('contain')
+                    ->automaticallyResizeImagesToWidth('1280')
+                    ->automaticallyResizeImagesToHeight('1280')
+                    ->maxSize(10240),
             ]);
     }
 
@@ -70,6 +83,21 @@ class BemEncontradoResource extends Resource
     {
         return $table
             ->columns([
+                textColumn::make('sem_rp')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
+                    ->color(fn(string $state): string => match ($state) {
+                        '1' => 'danger',
+                        '0' => 'success',
+                    })
+                    ->label('Sem RP')
+                    ->alignCenter()
+                    ->icon(fn(string $state): string => match ($state) {
+                        '1' => 'heroicon-o-x-circle',
+                        '0' => 'heroicon-o-check-circle',
+                    }),
+
+
                 TextColumn::make('rp')
                     ->label('RP'),
                 ImageColumn::make('foto')
@@ -77,7 +105,7 @@ class BemEncontradoResource extends Resource
                     ->circular(),
                 TextColumn::make('descricao')
                     ->label('Descrição'),
-                TextColumn::make('local')
+                TextColumn::make('local.nome')
                     ->label('Local'),
                 TextColumn::make('situacao')
                     ->label('Situação')
@@ -86,11 +114,11 @@ class BemEncontradoResource extends Resource
                     ->badge()
                     ->alignCenter()
                     ->searchable()
-                    ->color(fn ($state): string => match ($state) {
+                    ->color(fn($state): string => match ($state) {
                         'Servível' => 'success',
                         'Inservível' => 'danger',
                     })
-                    ->icon(fn ($state): string => match ($state) {
+                    ->icon(fn($state): string => match ($state) {
                         'Servível' => 'heroicon-o-check-circle',
                         'Inservível' => 'heroicon-o-x-circle',
                         'Não Localizado' => 'heroicon-o-x-circle',
@@ -102,11 +130,11 @@ class BemEncontradoResource extends Resource
                     ->badge()
                     ->alignCenter()
                     ->searchable()
-                    ->color(fn ($state): string => match ($state) {
+                    ->color(fn($state): string => match ($state) {
                         'Pendente' => 'warning',
                         'Resolvido' => 'success',
                     })
-                    ->icon(fn ($state): string => match ($state) {
+                    ->icon(fn($state): string => match ($state) {
                         'Pendente' => 'heroicon-o-clock',
                         'Resolvido' => 'heroicon-o-check-circle',
                     }),
