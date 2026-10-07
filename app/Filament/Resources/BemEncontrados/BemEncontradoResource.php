@@ -53,6 +53,7 @@ class BemEncontradoResource extends Resource
                     ->relationship('local', 'nome'),
                 Select::make('situacao')
                     ->label('Situação')
+                    ->searchable()
                     ->options([
                         'Servível' => 'Servível',
                         'Inservível' => 'Inservível',
