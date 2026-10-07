@@ -23,8 +23,11 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Marcelorodrigo\FilamentBarcodeScannerField\Forms\Components\BarcodeInput;
 
 /**
@@ -269,26 +272,113 @@ class ConferirBens extends Page implements HasForms, HasTable
             && filled($conferencia?->situacao ?? $bem->situacao);
     }
 
-    public function table(Table $table): Table
+    /**
+     * Universo de bens do usuário logado no inventário informado: os
+     * mesmos itens que a tabela carrega (conferência no inventário e
+     * local entre os locais do usuário). Sem inventário, não retorna nada.
+     */
+    protected function bensDoUsuarioQuery(?int $inventarioId): Builder
     {
         $locaisIds = $this->locaisDoUsuarioIds();
 
+        $query = Bem::query()->whereHas('conferencias', function ($query) use ($inventarioId, $locaisIds) {
+            $query
+                ->where('inventario_id', $inventarioId)
+                ->whereIn('local_id', $locaisIds);
+        });
+
+        if (! $inventarioId) {
+            $query->whereRaw('1 = 0');
+        }
+
+        return $query;
+    }
+
+    /**
+     * Totais da barra de progresso. Considera apenas os bens carregados
+     * para o usuário logado e ignora busca e filtros da tabela (o
+     * progresso é do trabalho dele, não do recorte que está na tela).
+     *
+     * @return array{total: int, conferidos: int, pendentes: int, percentual: int, largura: float}
+     */
+    protected function progressoConferencia(): array
+    {
+        $inventarioId = $this->inventarioSelecionadoId();
+        $locaisIds = $this->locaisDoUsuarioIds();
+
+        $total = $this->bensDoUsuarioQuery($inventarioId)->count();
+
+        $conferidos = $this->bensDoUsuarioQuery($inventarioId)
+            ->whereHas('conferencias', function ($query) use ($inventarioId, $locaisIds) {
+                $query
+                    ->where('inventario_id', $inventarioId)
+                    ->whereIn('local_id', $locaisIds)
+                    ->whereNotNull('conferido_em');
+            })
+            ->count();
+
+        return [
+            'total' => $total,
+            'conferidos' => $conferidos,
+            'pendentes' => $total - $conferidos,
+            // floor: 999 de 1000 não pode aparecer como 100%.
+            'percentual' => $total > 0 ? (int) floor($conferidos / $total * 100) : 0,
+            'largura' => $total > 0 ? round($conferidos / $total * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
+     * Barra de progresso exibida no cabeçalho, logo abaixo do título.
+     * É re-renderizada a cada requisição Livewire, então acompanha
+     * confirmações, edições em lote e troca de inventário.
+     *
+     * Usa <span> (e não <div>) porque o subtítulo do Filament fica
+     * dentro de um <p>, e estilos inline para não depender do build do
+     * Tailwind.
+     */
+    public function getSubheading(): string|Htmlable|null
+    {
+        if (! $this->inventarioSelecionadoId()) {
+            return null;
+        }
+
+        ['total' => $total, 'conferidos' => $conferidos, 'pendentes' => $pendentes, 'percentual' => $percentual, 'largura' => $largura] = $this->progressoConferencia();
+
+        $fundo = $total > 0 ? '#f59e0b' : 'rgba(128, 128, 128, 0.25)';
+
+        return new HtmlString(<<<HTML
+            <span style="display:block; margin-top:0.75rem; max-width:42rem;">
+                <span style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:0.25rem 1rem; margin-bottom:0.375rem; font-size:0.8125rem;">
+                    <span>
+                        <span style="display:inline-block; width:0.625rem; height:0.625rem; border-radius:9999px; background:#22c55e; margin-right:0.25rem;"></span>
+                        Conferidos: <strong>{$conferidos}</strong> ({$percentual}%)
+                    </span>
+                    <span>
+                        <span style="display:inline-block; width:0.625rem; height:0.625rem; border-radius:9999px; background:#f59e0b; margin-right:0.25rem;"></span>
+                        Pendentes: <strong>{$pendentes}</strong>
+                    </span>
+                    <span>Total: <strong>{$total}</strong></span>
+                </span>
+                <span role="progressbar" aria-label="Progresso da conferência" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{$percentual}"
+                    style="display:flex; height:0.75rem; border-radius:9999px; overflow:hidden; background:{$fundo};">
+                    <span style="display:block; height:100%; width:{$largura}%; background:#22c55e; transition:width 0.3s ease;"></span>
+                </span>
+            </span>
+            HTML);
+    }
+
+    public function table(Table $table): Table
+    {
         return $table
-            ->query(function () use ($locaisIds) {
+            ->query(function () {
                 $inventarioId = $this->inventarioSelecionadoId();
 
-                $query = Bem::query()->whereHas('conferencias', function ($query) use ($inventarioId, $locaisIds) {
-                    $query
-                        ->where('inventario_id', $inventarioId)
-                        ->whereIn('local_id', $locaisIds);
-                });
+                $query = $this->bensDoUsuarioQuery($inventarioId);
 
+                // Sem inventário selecionado, a query base não retorna nada
+                // (só a mensagem pedindo para escolher um).
                 if ($inventarioId) {
                     $query->with(['conferencias' => fn($q) => $q->where('inventario_id', $inventarioId)]);
-                } else {
-                    // Sem inventário selecionado ainda: não mostra nenhum bem,
-                    // só a mensagem pedindo para escolher um.
-                    $query->whereRaw('1 = 0');
                 }
 
                 return $query;
