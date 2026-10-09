@@ -7,12 +7,14 @@ use App\Filament\Resources\Bems\Pages\ManageBems;
 use App\Models\Bem;
 use App\Models\Local;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
+use Filament\Schemas\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -24,6 +26,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Js;
+use Livewire\Component;
 
 class BemResource extends Resource
 {
@@ -79,11 +83,6 @@ class BemResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(BemExporter::class)
-                    ->label('Exportar Bens'),
-            ])
             ->columns([
                 TextColumn::make('rp')
                     ->label('RP')
@@ -136,6 +135,53 @@ class BemResource extends Resource
                     ->relationship('local', 'nome')
                     ->searchable()
                     ->label('Local'),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(BemExporter::class)
+                    ->label('Exportar Bens'),
+                // formulário para filtros
+                Action::make('filter')
+                    ->label('Relatório PDF')
+                    ->schema([
+                        Grid::make()
+                            ->schema([
+                                TextInput::make('rp')
+                                    ->label('RP')
+                                    ->maxLength(255),
+                                TextInput::make('descricao')
+                                    ->label('Descrição')
+                                    ->maxLength(255),
+                                Select::make('local_id')
+                                    ->label('Local')
+                                    ->options(fn () => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                                    ->searchable()
+                                    ->preload(),
+                                Select::make('ultima_situacao')
+                                    ->label('Última Situação')
+                                    ->options([
+                                        'Servível' => 'Servível',
+                                        'Inservível' => 'Inservível',
+                                        'Não Localizado' => 'Não Localizado',
+                                    ]),
+                                TextInput::make('elemento_despesa')
+                                    ->label('Elemento de Despesa')
+                                    ->maxLength(255),
+                                TextInput::make('valor')
+                                    ->label('Valor')
+                                    ->maxLength(255),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
+                    ])
+                    ->modalSubmitActionLabel('Gerar PDF')
+                    ->action(function (array $data, Component $livewire): void {
+                        $url = route('relatorios.bens.pdf', array_filter($data, fn ($value) => filled($value)));
+
+                        // Abre o PDF em outra aba do navegador.
+                        $livewire->js('window.open(' . Js::from($url) . ", '_blank')");
+                    }),
+
             ])
             ->recordActions([
                 EditAction::make()
