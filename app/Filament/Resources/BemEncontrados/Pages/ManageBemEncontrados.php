@@ -16,7 +16,7 @@ class ManageBemEncontrados extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->label('Novo bem encontrado')
+                ->label('Novo Bem Encontrado')
                 ->icon('heroicon-o-plus')
                 ->modalHeading('Adicionar bem encontrado'),
         ];
