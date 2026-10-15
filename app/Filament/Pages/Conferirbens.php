@@ -448,7 +448,8 @@ class ConferirBens extends Page implements HasForms, HasTable
                 SelectColumn::make('conferencia_situacao')
                     ->label('Situação')
                     ->options(self::SITUACOES)
-                    // ->selectablePlaceholder(false)
+                    ->placeholder('Selecione...')
+                    ->rules(['required'])
                     ->getStateUsing(function (Bem $record) {
                         $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
 
@@ -456,6 +457,11 @@ class ConferirBens extends Page implements HasForms, HasTable
                     })
                     ->updateStateUsing(function (Bem $record, $state) {
                         $inventarioId = $this->inventarioSelecionadoId();
+
+                        // Trava extra: nunca grava situação vazia
+                        if (! $inventarioId || blank($state)) {
+                            return;
+                        }
 
                         if (! $inventarioId) {
                             return;
