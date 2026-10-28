@@ -168,12 +168,11 @@
             <thead>
                 <tr>
                     <th style="width: 7%">RP</th>
-                    <th style="width: 27%">Bem</th>
+                    <th style="width: 37%">Bem</th>
                     <th style="width: 14%">Andamento</th>
                     <th style="width: 14%">Situação</th>
                     <th style="width: 14%">Conferido em</th>
                     <th style="width: 14%">Conferido por</th>
-                    <th style="width: 10%">Observação</th>
                 </tr>
             </thead>
             <tbody>
@@ -185,7 +184,6 @@
                         <td>{{ $conferencia->situacao ?? '—' }}</td>
                         <td>{{ $conferencia->conferido_em ? \Illuminate\Support\Carbon::parse($conferencia->conferido_em)->format('d/m/Y H:i') : '—' }}</td>
                         <td>{{ $conferencia->conferidoPor?->name ?? '—' }}</td>
-                        <td>{{ $conferencia->observacao ?? '—' }}</td>
                     </tr>
                 @endforeach
             </tbody>
