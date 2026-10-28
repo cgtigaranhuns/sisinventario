@@ -6,6 +6,7 @@ use App\Models\Conferencia;
 use App\Models\Inventario;
 use App\Models\Local;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -81,6 +82,53 @@ class AndamentoConferenciaBens extends Page implements HasForms
                     ->required(),
             ])
             ->statePath('data');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('relatorio')
+                ->label('Gerar relatório PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->url(fn (): string => route('relatorios.conferencia.pdf', [
+                    'inventario' => $this->inventarioSelecionadoId(),
+                ]))
+                ->openUrlInNewTab()
+                ->visible(fn (): bool => filled($this->inventarioSelecionadoId())),
+
+            Action::make('relatorioLocal')
+                ->label('Relatório detalhado por local')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->modalHeading('Relatório detalhado por local')
+                ->modalSubmitActionLabel('Gerar PDF')
+                ->schema([
+                    Select::make('local')
+                        ->label('Local')
+                        ->options(fn (): array => $this->locaisDoInventario())
+                        ->searchable()
+                        ->required(),
+                ])
+                ->action(fn (array $data) => redirect()->to(route('relatorios.conferencia.pdf', [
+                    'inventario' => $this->inventarioSelecionadoId(),
+                    'local' => $data['local'],
+                ])))
+                ->visible(fn (): bool => filled($this->inventarioSelecionadoId())),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function locaisDoInventario(): array
+    {
+        return Local::query()
+            ->whereIn('id', Conferencia::query()
+                ->where('inventario_id', $this->inventarioSelecionadoId())
+                ->select('local_id'))
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
     }
 
     protected function inventarioSelecionadoId(): ?int
