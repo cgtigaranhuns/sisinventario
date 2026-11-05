@@ -143,6 +143,8 @@ class BemEncontradoResource extends Resource
                     }),
 
                 TextColumn::make('encontradoPor.name')
+                    ->sortable()
+                    ->searchable()
                     ->label('Encontrado por'),
 
             ])
