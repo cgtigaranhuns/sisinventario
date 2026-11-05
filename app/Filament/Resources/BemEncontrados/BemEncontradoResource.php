@@ -19,6 +19,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -100,13 +101,16 @@ class BemEncontradoResource extends Resource
 
 
                 TextColumn::make('rp')
+                    ->searchable()
                     ->label('RP'),
                 ImageColumn::make('foto')
                     ->label('Foto')
                     ->circular(),
                 TextColumn::make('descricao')
+                    ->searchable()
                     ->label('Descrição'),
                 TextColumn::make('local.nome')
+                    ->searchable()
                     ->label('Local'),
                 TextColumn::make('situacao')
                     ->label('Situação')
@@ -114,7 +118,6 @@ class BemEncontradoResource extends Resource
                     ->searchable()
                     ->badge()
                     ->alignCenter()
-                    ->searchable()
                     ->color(fn($state): string => match ($state) {
                         'Servível' => 'success',
                         'Inservível' => 'danger',
@@ -130,7 +133,6 @@ class BemEncontradoResource extends Resource
                     ->searchable()
                     ->badge()
                     ->alignCenter()
-                    ->searchable()
                     ->color(fn($state): string => match ($state) {
                         'Pendente' => 'warning',
                         'Resolvido' => 'success',
@@ -145,7 +147,24 @@ class BemEncontradoResource extends Resource
 
             ])
             ->filters([
-                //
+                SelectFilter::make('situacao')
+                    ->label('Situação')
+                    ->options([
+                        'Servível' => 'Servível',
+                        'Inservível' => 'Inservível',
+                        'Não Localizado' => 'Não Localizado',
+                    ]),
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'Pendente' => 'Pendente',
+                        'Resolvido' => 'Resolvido',
+                    ]),
+                SelectFilter::make('local_id')
+                    ->searchable()
+                    ->preload()
+                    ->label('Local')
+                    ->relationship('local', 'nome'),
             ])
             ->recordActions([
                 EditAction::make()
