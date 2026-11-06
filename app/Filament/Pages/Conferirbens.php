@@ -26,6 +26,7 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Marcelorodrigo\FilamentBarcodeScannerField\Forms\Components\BarcodeInput;
@@ -228,6 +229,15 @@ class ConferirBens extends Page implements HasForms, HasTable
         return filled($valor) ? (int) $valor : null;
     }
 
+    protected ?Collection $nomesLocais = null;
+
+    protected function nomeDoLocal(?int $localId): ?string
+    {
+        $this->nomesLocais ??= Local::query()->pluck('nome', 'id');
+
+        return $localId ? $this->nomesLocais->get($localId) : null;
+    }
+
     protected function conferenciaDoRegistro(Bem $bem, ?int $inventarioId): ?Conferencia
     {
         if (! $inventarioId) {
@@ -408,43 +418,56 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->limit(60)
                     ->tooltip(fn($record) => $record->descricao),
 
-                SelectColumn::make('conferencia_local_id')
+                TextColumn::make('conferencia_local_id')
                     ->label('Local')
-                    ->options(fn() => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
-                    ->searchableOptions()
-                    ->native(false)
-                    ->selectablePlaceholder(false)
-                    ->getStateUsing(function (Bem $record) {
+                    ->state(function (Bem $record) {
                         $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
 
-                        return $conferencia?->local_id ?? $record->local_id;
+                        return $this->nomeDoLocal($conferencia?->local_id ?? $record->local_id);
                     })
-                    ->updateStateUsing(function (Bem $record, $state) {
-                        $inventarioId = $this->inventarioSelecionadoId();
+                    ->placeholder('Selecionar...')
+                    ->icon('heroicon-o-pencil-square')
+                    ->iconPosition('after')
+                    ->color('primary')
+                    ->action(
+                        Action::make('alterarLocal')
+                            ->modalHeading('Confirmar alteração de local')
+                            ->modalDescription('Ao alterar o local, o item voltará para pendente e precisará ser confirmado novamente.')
+                            ->modalSubmitActionLabel('Alterar local')
+                            ->requiresConfirmation()
+                            ->fillForm(function (Bem $record) {
+                                $conferencia = $this->conferenciaDoRegistro($record, $this->inventarioSelecionadoId());
 
-                        if (! $inventarioId) {
-                            return;
-                        }
+                                return ['local_id' => $conferencia?->local_id ?? $record->local_id];
+                            })
+                            ->form([
+                                Select::make('local_id')
+                                    ->label('Novo local')
+                                    ->options(fn() => Local::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                                    ->searchable()
+                                    ->native(false)
+                                    ->required(),
+                            ])
+                            ->action(function (Bem $record, array $data) {
+                                $inventarioId = $this->inventarioSelecionadoId();
 
-                        $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
-                        $estavaConferido = filled($conferenciaAtual?->conferido_em);
+                                if (! $inventarioId) {
+                                    return;
+                                }
 
-                        $this->salvarConferencia(
-                            $record,
-                            $inventarioId,
-                            [
-                                'local_id' => $state,
-                                'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
-                            ],
-                            ! $estavaConferido,
-                        );
+                                $conferenciaAtual = $this->conferenciaDoRegistro($record, $inventarioId);
 
-                        Notification::make()
-                            ->title($estavaConferido ? 'Local atualizado — item voltou para pendente' : 'Local atualizado')
-                            ->success()
-                            ->send();
-                    }),
-                    
+                                $this->salvarConferencia($record, $inventarioId, [
+                                    'local_id' => $data['local_id'],
+                                    'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
+                                ], false);
+
+                                Notification::make()
+                                    ->title('Local atualizado — item pendente de confirmação')
+                                    ->success()
+                                    ->send();
+                            })
+                    ),
 
                 SelectColumn::make('conferencia_situacao')
                     ->label('Situação')
@@ -666,6 +689,10 @@ class ConferirBens extends Page implements HasForms, HasTable
                     ->label('Alterar local dos selecionados')
                     ->icon('heroicon-o-pencil-square')
                     ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmar alteração de local')
+                    ->modalDescription('O local dos itens selecionados será alterado e eles voltarão para pendente, precisando ser confirmados novamente.')
+                    ->modalSubmitActionLabel('Alterar local')
                     ->form([
                         Select::make('local_id')
                             ->label('Novo local')
@@ -685,7 +712,7 @@ class ConferirBens extends Page implements HasForms, HasTable
                             $this->salvarConferencia($record, $inventarioId, [
                                 'local_id' => $data['local_id'],
                                 'situacao' => $conferenciaAtual->situacao ?? $record->situacao,
-                            ]);
+                            ], false);
                         }
                         Notification::make()
                             ->title('Local atualizado para os itens selecionados')
