@@ -1,7 +1,6 @@
 *.log
 .DS_Store
 .env
-/app/Models/Conferencia.php
 .env.backup
 .env.production
 .phpactor.json
@@ -29,3 +28,4 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+app/Models/Conferencia.php
