@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\Inventarios\RelationManagers;
 
+use App\Filament\Exports\ConferenciaExporter;
 use App\Models\Bem;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -42,7 +44,7 @@ class BensInventarioRelationManager extends RelationManager
                     ->options([
                         'Servível' => 'Servível',
                         'Inservível' => 'Inservível',
-                        'Não Localizado' => 'Não Localizado',                       
+                        'Não Localizado' => 'Não Localizado',
                     ]),
                 Textarea::make('observacao')
                     ->label('Observação'),
@@ -68,7 +70,7 @@ class BensInventarioRelationManager extends RelationManager
                             ->count();
                         $bens = Bem::query()
                             ->whereNotIn('id', $idsJaAdicionados)
-                           // ->whereNotNull('local_id')
+                            // ->whereNotNull('local_id')
                             ->get(['id', 'local_id', 'ultima_situacao']);
 
                         $bens->each(function (Bem $bem) use ($inventario): void {
@@ -89,55 +91,63 @@ class BensInventarioRelationManager extends RelationManager
                     }),
 
                 Action::make('addBemAvulso')
-                        ->label('Adicionar bem avulso')
-                        ->icon('heroicon-o-plus-circle')
-                        ->form([
-                            Select::make('rp_id')
-                                ->label('Bem')
-                                ->relationship('bem', 'rp')
-                                ->getOptionLabelFromRecordUsing(fn (Bem $record): string => "{$record->rp} - {$record->descricao}")
-                                ->searchable(['rp', 'descricao'])
-                                ->preload()
-                                ->required(),
-                        ])
-                        ->action(function (array $data): void {
-                            $inventario = $this->getOwnerRecord();
+                    ->label('Adicionar bem avulso')
+                    ->icon('heroicon-o-plus-circle')
+                    ->form([
+                        Select::make('rp_id')
+                            ->label('Bem')
+                            ->relationship('bem', 'rp')
+                            ->getOptionLabelFromRecordUsing(fn(Bem $record): string => "{$record->rp} - {$record->descricao}")
+                            ->searchable(['rp', 'descricao'])
+                            ->preload()
+                            ->required(),
+                    ])
+                    ->action(function (array $data): void {
+                        $inventario = $this->getOwnerRecord();
 
-                            if ($inventario->conferencias()
-                                ->where('rp_id', $data['rp_id'])
-                                ->exists()) {
-                                Notification::make()
-                                    ->title('Bem já adicionado')
-                                    ->body('Este bem já foi adicionado a este inventário.')
-                                    ->warning()
-                                    ->send();
-
-                                return;
-                            }
-
-                            $bem = Bem::find($data['rp_id']);
-
-                            if (! $bem) {
-                                Notification::make()
-                                    ->title('Bem não encontrado')
-                                    ->danger()
-                                    ->send();
-
-                                return;
-                            }
-
-                            $inventario->conferencias()->create([
-                                'rp_id' => $bem->id,
-                                'local_id' => $bem->local_id,
-                                'situacao' => $bem->ultima_situacao,
-                            ]);
-
+                        if ($inventario->conferencias()
+                            ->where('rp_id', $data['rp_id'])
+                            ->exists()
+                        ) {
                             Notification::make()
-                                ->title('Bem adicionado com sucesso')
-                                ->success()
+                                ->title('Bem já adicionado')
+                                ->body('Este bem já foi adicionado a este inventário.')
+                                ->warning()
                                 ->send();
-                        })
-                    
+
+                            return;
+                        }
+
+                        $bem = Bem::find($data['rp_id']);
+
+                        if (! $bem) {
+                            Notification::make()
+                                ->title('Bem não encontrado')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $inventario->conferencias()->create([
+                            'rp_id' => $bem->id,
+                            'local_id' => $bem->local_id,
+                            'situacao' => $bem->ultima_situacao,
+                        ]);
+
+                        Notification::make()
+                            ->title('Bem adicionado com sucesso')
+                            ->success()
+                            ->send();
+                    }),
+                ExportAction::make('exportar')
+                    ->label('Exportar conferências')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->chunkSize(100)
+                    ->exporter(ConferenciaExporter::class)
+                    ->fileName('conferencias-inventario')
+
+
 
             ])
             ->columns([
@@ -148,7 +158,7 @@ class BensInventarioRelationManager extends RelationManager
                 TextColumn::make('bem.descricao')
                     ->label('Descrição')
                     ->limit(30)
-                    ->tooltip(fn ($record) => $record->descricao)
+                    ->tooltip(fn($record) => $record->descricao)
                     ->searchable(),
                 TextColumn::make('local.nome')
                     ->label('Local')
@@ -156,20 +166,20 @@ class BensInventarioRelationManager extends RelationManager
                     ->searchable(),
                 TextColumn::make('situacao')
                     ->label('Situação')
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'Servível' => 'success',
                         'Inservível' => 'warning',
                         'Não Localizado' => 'danger',
                         default => 'secondary',
                     })
-                    ->badge(),                
+                    ->badge(),
                 TextColumn::make('conferido_em')
                     ->label('Conferido em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('conferidoPor.name')
                     ->limit(15)
-                    ->tooltip(fn ($record) => $record->conferidoPor?->name)
+                    ->tooltip(fn($record) => $record->conferidoPor?->name)
                     ->label('Conferido por'),
             ])
             ->recordActions([
@@ -178,10 +188,12 @@ class BensInventarioRelationManager extends RelationManager
                 DeleteAction::make()
                     ->label(''),
             ])
-             ->toolbarActions([
+            ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ]);
     }
+
+    
 }
