@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Models\Concerns\LogsActivity; // Para versões do servidor que usam a versão 5 do pacote Spatie Activitylog
 use Spatie\Activitylog\Support\LogOptions; // Para versões do servidor que usam a versão 5 do pacote Spatie Activitylog
 
+
 //use Spatie\Activitylog\Traits\LogsActivity; // Para versões do laragon que usa a versão 4 do pacote Spatie Activitylog
 //use Spatie\Activitylog\LogOptions; // Para versões do laragon que usa a versão 4 do pacote Spatie Activitylog
 
